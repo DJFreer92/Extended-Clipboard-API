@@ -16,7 +16,6 @@ Small FastAPI service and utilities for persisting clipboard entries to a local 
 - Python 3.13
 - FastAPI, Uvicorn, Pydantic
 - SQLite (via Python stdlib)
-- SQLAlchemy listed in requirements but not used by current modules
 
 ## Repository structure
 
