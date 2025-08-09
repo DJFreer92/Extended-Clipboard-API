@@ -16,3 +16,6 @@ DB_PATH: Path = APP_DIR / "db" / "clipboard.db"
 # Clips
 ADD_CLIP: Path = QUERIES_DIR / "add_clip.sql"
 GET_N_CLIPS: Path = QUERIES_DIR / "get_n_clips.sql"
+GET_ALL_CLIPS: Path = QUERIES_DIR / "get_all_clips.sql"
+DELETE_CLIP: Path = QUERIES_DIR / "delete_clip.sql"
+DELETE_ALL_CLIPS: Path = QUERIES_DIR / "delete_all_clips.sql"

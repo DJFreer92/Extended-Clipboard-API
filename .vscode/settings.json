@@ -1,0 +1,11 @@
+{
+	"sqltools.useNodeRuntime": true,
+	"sqltools.connections": [
+		{
+			"previewLimit": 100,
+			"driver": "SQLite",
+			"name": "ClipboardDB",
+			"database": "./app/db/clipboard.db"
+		}
+	]
+}
