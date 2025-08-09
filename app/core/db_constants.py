@@ -1,15 +1,15 @@
 from pathlib import Path
 
 # Dirs
-BASE_DIR: str = str(Path(__file__).resolve().parent.parent.parent)
-DB_PATH: str = BASE_DIR + "clipboard.db"
-SCHEMA_DIR: str = BASE_DIR + "app" + "core" + "schema"
-QUERIES_DIR: str = BASE_DIR + "app" + "core" + "queries"
-TABLES_DIR: str = SCHEMA_DIR + "tables"
-TRIGGERS_DIR: str = SCHEMA_DIR + "triggers"
-VIEWS_DIR: str = SCHEMA_DIR + "views"
-INDEXES_DIR: str = SCHEMA_DIR + "indexes"
+BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
+DB_PATH: Path = BASE_DIR / "clipboard.db"
+SCHEMA_DIR: Path = BASE_DIR / "app" / "core" / "schema"
+QUERIES_DIR: Path = BASE_DIR / "app" / "core" / "queries"
+TABLES_DIR: Path = SCHEMA_DIR / "tables"
+TRIGGERS_DIR: Path = SCHEMA_DIR / "triggers"
+VIEWS_DIR: Path = SCHEMA_DIR / "views"
+INDEXES_DIR: Path = SCHEMA_DIR / "indexes"
 
 # Clips
-ADD_CLIP: str = QUERIES_DIR + "add_clip.sql"
-GET_N_CLIPS: str = QUERIES_DIR + "get_n_clips.sql"
+ADD_CLIP: Path = QUERIES_DIR / "add_clip.sql"
+GET_N_CLIPS: Path = QUERIES_DIR / "get_n_clips.sql"
