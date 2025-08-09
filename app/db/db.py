@@ -1,5 +1,5 @@
 import sqlite3
-from app.core.db_constants import *
+from ..core.constants import *
 
 def get_connection() -> sqlite3.Connection:
     """Returns a new SQLite connection to the persistent clipboard.db file."""

@@ -2,13 +2,16 @@ from pathlib import Path
 
 # Dirs
 BASE_DIR: Path = Path(__file__).resolve().parent.parent.parent
-DB_PATH: Path = BASE_DIR / "clipboard.db"
-SCHEMA_DIR: Path = BASE_DIR / "app" / "core" / "schema"
-QUERIES_DIR: Path = BASE_DIR / "app" / "core" / "queries"
+APP_DIR: Path = BASE_DIR / "app"
+SCHEMA_DIR: Path = APP_DIR / "db" / "schema"
+QUERIES_DIR: Path = APP_DIR / "db" / "queries"
 TABLES_DIR: Path = SCHEMA_DIR / "tables"
 TRIGGERS_DIR: Path = SCHEMA_DIR / "triggers"
 VIEWS_DIR: Path = SCHEMA_DIR / "views"
 INDEXES_DIR: Path = SCHEMA_DIR / "indexes"
+
+# DB
+DB_PATH: Path = APP_DIR / "db" / "clipboard.db"
 
 # Clips
 ADD_CLIP: Path = QUERIES_DIR / "add_clip.sql"
