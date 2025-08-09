@@ -155,6 +155,49 @@ Manual query sanity check:
 python tests/test_query.py
 ```
 
+## Testing
+
+Unit tests are written with pytest and cover endpoints, services, and the database (queries + triggers).
+
+Prerequisites:
+
+- Activate the virtual environment and install dependencies.
+- Install pytest (dev dependency):
+
+```bash
+pip install pytest
+```
+
+Run all tests from the repository root:
+
+```bash
+pytest -q
+```
+
+Run only service tests:
+
+```bash
+pytest tests/service_tests -q
+```
+
+Run only endpoint tests:
+
+```bash
+pytest tests/endpoint_tests -q
+```
+
+Run only database (queries + triggers) tests:
+
+```bash
+pytest tests/db_tests -q
+```
+
+Notes:
+
+- Tests rely on `tests/conftest.py` to bootstrap imports; run pytest from the repo root so modules import cleanly.
+- Service tests mock DB access (`execute_query`), and endpoint tests mock service calls, so no real database or network is used.
+- Database tests run against a real, isolated SQLite database file created under a temporary directory. They patch the DB path and call `init_db()` so actual schema and triggers are applied. The temporary DB is deleted automatically after tests, and `app/db/clipboard.db` is never touched.
+
 ## Troubleshooting
 
 - “Database already exists. Skipping init.” means the schema init was previously run; delete `app/db/clipboard.db` if you want a fresh database.
