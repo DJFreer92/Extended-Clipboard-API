@@ -92,13 +92,21 @@ Visit the interactive docs:
     curl "http://127.0.0.1:8000/clipboard/get_recent_clips?n=5"
     ```
 
-- POST `/clipboard/add_clip?content=...`
+- POST `/clipboard/add_clip`
   - Adds a new clipboard entry.
-  - For simple usage, `content` is passed as a query parameter.
+  - Request body (application/json):
+
+    ```json
+    { "content": "Hello World" }
+    ```
+
   - Example:
 
     ```bash
-    curl -X POST "http://127.0.0.1:8000/clipboard/add_clip?content=Hello%20World"
+    curl -X POST \
+      -H "Content-Type: application/json" \
+      -d '{"content":"Hello World"}' \
+      "http://127.0.0.1:8000/clipboard/add_clip"
     ```
 
 ## Database
