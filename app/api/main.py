@@ -1,5 +1,5 @@
 from fastapi import FastAPI
-from app.endpoints.clipboard import clipboard_endpoints
+from api.clipboard import clipboard_endpoints
 
 app: FastAPI = FastAPI()
 

@@ -1,5 +1,5 @@
-from app.core.db import execute_query
-from app.core.db_constants import *
+from app.db.db import execute_query
+from app.core.constants import *
 
 def run_test_query() -> None:
     execute_query(ADD_CLIP, ("abc",))

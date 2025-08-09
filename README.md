@@ -21,25 +21,47 @@ Small FastAPI service and utilities for persisting clipboard entries to a local 
 ## Repository structure
 
 ```text
-clipboard.db               # SQLite database (created on first init)
-requirements.txt           # Python dependencies
+LICENSE                         # Project license
+README.md                       # This file
+requirements.txt                # Python dependencies
 app/
-  main.py                  # FastAPI app entry
-  endpoints/               # HTTP routes (routers)
-  services/                # Business logic
-  models/                  # Pydantic models (request/response)
+  api/
+    __init__.py
+    main.py                     # FastAPI app entry (includes routers)
+    clipboard/
+      clipboard_endpoints.py    # HTTP routes for clipboard
   core/
-    db.py                  # DB helpers (init_db, execute_query)
-    db_constants.py        # Paths and constants
-    schema/                # DDL: tables, indexes, triggers, views
-queries/                   # Reusable SQL query files
+    constants.py                # Paths and constants
+  db/
+    __init__.py
+    db.py                       # DB helpers (init_db, execute_query)
+    clipboard.db                # SQLite database (created on first init)
+    queries/                    # Reusable SQL query files
+      add_clip.sql
+      get_n_clips.sql
+    schema/                     # DDL: tables, indexes, triggers, views
+      tables/
+        clips.sql
+      triggers/
+        delete_old_if_duplicate.sql
+      indexes/
+      views/
+  models/
+    clipboard/
+      clipboard_models.py       # Pydantic models (request/response)
+  services/
+    __init__.py
+    clipboard/
+      clipboard_service.py      # Business logic for clipboard
 scripts/
-  create_db.py             # Initializes DB schema (runs init_db)
+  create_db.py                  # Initializes DB schema (runs init_db)
+  run_api.py                    # Helper script to run the API
+  run_poller.py                 # Optional: example poller/ingestion script
 tests/
-  test_query.py            # Simple manual test script for queries
+  test_query.py                 # Simple manual test script for queries
 .github/
-  copilot-instructions.md  # Copilot repository instructions
-  instructions/            # Language-specific Copilot instruction files
+  copilot-instructions.md       # Copilot repository instructions
+  instructions/                 # Language-specific Copilot instruction files
 ```
 
 ## Getting started
@@ -65,8 +87,14 @@ python scripts/create_db.py
 
 ## Run the API
 
+You can run the server via Uvicorn or the helper script.
+
 ```bash
-uvicorn app.main:app --reload
+# Option A: Uvicorn directly
+uvicorn app.api.main:app --reload
+
+# Option B: Helper script
+python scripts/run_api.py
 ```
 
 Visit the interactive docs:
@@ -111,14 +139,14 @@ Visit the interactive docs:
 
 ## Database
 
-- File: `clipboard.db` at repo root (created on first init)
-- Schema: SQL files under `app/core/schema/**` (tables, indexes, triggers, views)
-- Queries: Reusable SQL under `queries/`; executed via `app/core/db.execute_query()`
+- File: `app/db/clipboard.db` (created on first init)
+- Schema: SQL files under `app/db/schema/**` (tables, indexes, triggers, views)
+- Queries: Reusable SQL under `app/db/queries/**`; executed via helpers in `app/db/db.py`
 
 ## Development notes
 
 - Keep logic layered: Endpoints → Services → DB helpers/queries → Schema.
-- Add new queries as `.sql` files in `queries/` and execute via the DB helper.
+- Add new queries as `.sql` files in `app/db/queries/` and execute via the DB helper in `app/db/db.py`.
 - If you change behavior, add/update tests under `tests/`.
 
 Manual query sanity check:
@@ -129,7 +157,7 @@ python tests/test_query.py
 
 ## Troubleshooting
 
-- “Database already exists. Skipping init.” means the schema init was previously run; delete `clipboard.db` if you want a fresh database.
+- “Database already exists. Skipping init.” means the schema init was previously run; delete `app/db/clipboard.db` if you want a fresh database.
 - If imports fail when running scripts, ensure you’re executing from the repo root with the virtual environment activated.
 
 ## License

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query
-from app.services.clipboard import clipboard_service
-from app.models.clipboard.clipboard_models import Clips, Clip
+from services.clipboard import clipboard_service
+from models.clipboard.clipboard_models import Clips, Clip
 
 router = APIRouter(prefix="/clipboard", tags=["Clipboard"])
 
