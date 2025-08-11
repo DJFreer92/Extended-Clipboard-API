@@ -39,6 +39,14 @@ def execute_dynamic_query(query: callable, params: tuple | dict | None = None) -
 
     with get_connection() as conn:
         cursor: sqlite3.Cursor = conn.cursor()
-        cursor.execute(query(), params or ())
+        # Build the SQL string from the callable without arguments; params (if any)
+        # are passed to cursor.execute separately.
+        result = query()
+        if isinstance(result, tuple) and len(result) == 2:
+            sql, query_params = result
+            cursor.execute(sql, query_params)
+        else:
+            sql = result
+            cursor.execute(sql, params or ())
         results: list = cursor.fetchall()
         return results

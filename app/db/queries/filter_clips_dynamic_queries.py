@@ -1,10 +1,10 @@
 import re
 
 # Queries
-def filter_all_clips_query(*, search: str = '', time_frame: str = '') -> str:
+def filter_all_clips_query(*, search: str = '', time_frame: str = '') -> tuple[str, list]:
     """Construct a SQL query to filter all clips based on keywords and time frame."""
 
-    keyword_clauses: str = build_keyword_where_clause(search)
+    keyword_clauses, params = build_keyword_where_clause(search)
     time_condition: str = construct_time_condition_ge(time_frame)
 
     sql_query: str = f"""
@@ -13,12 +13,12 @@ def filter_all_clips_query(*, search: str = '', time_frame: str = '') -> str:
     ORDER BY ID DESC;
     """
 
-    return sql_query
+    return sql_query, params
 
-def filter_n_clips_query(*, search: str = '', time_frame: str = '', n: int | None = None) -> str:
+def filter_n_clips_query(*, search: str = '', time_frame: str = '', n: int | None = None) -> tuple[str, list]:
     """Construct a SQL query to filter a specific number of clips based on keywords and time frame."""
 
-    keyword_clauses: str = build_keyword_where_clause(search)
+    keyword_clauses, params = build_keyword_where_clause(search)
     time_condition: str = construct_time_condition_ge(time_frame)
 
     sql_query: str = f"""
@@ -28,41 +28,41 @@ def filter_n_clips_query(*, search: str = '', time_frame: str = '', n: int | Non
     LIMIT COALESCE({n}, 999999);
     """
 
-    return sql_query
+    return sql_query, params
 
-def filter_all_clips_after_id_query(*, search: str = '', time_frame: str = '', after_id: int) -> str:
+def filter_all_clips_after_id_query(*, search: str = '', time_frame: str = '', after_id: int) -> tuple[str, list]:
     """Construct a SQL query to filter clips based on keywords and time frame, starting after a specific ID."""
 
-    keyword_clauses: str = build_keyword_where_clause(search)
+    keyword_clauses, params = build_keyword_where_clause(search)
     time_condition: str = construct_time_condition_ge(time_frame)
 
     sql_query: str = f"""
     SELECT * FROM Clips
-    WHERE {keyword_clauses} AND {time_condition} AND ID > {after_id}
+    WHERE {keyword_clauses} AND {time_condition} AND ID > ?
     ORDER BY ID DESC
     """
 
-    return sql_query
+    return sql_query, [*params, after_id]
 
-def filter_n_clips_before_id_query(*, search: str = '', time_frame: str = '', n: int | None = None, before_id: int) -> str:
+def filter_n_clips_before_id_query(*, search: str = '', time_frame: str = '', n: int | None = None, before_id: int) -> tuple[str, list]:
     """Construct a SQL query to filter a specific number of clips based on keywords and time frame, starting before a specific ID."""
 
-    keyword_clauses: str = build_keyword_where_clause(search)
+    keyword_clauses, params = build_keyword_where_clause(search)
     time_condition: str = construct_time_condition_ge(time_frame)
 
     sql_query: str = f"""
     SELECT * FROM Clips
-    WHERE {keyword_clauses} AND {time_condition} AND ID < {before_id}
+    WHERE {keyword_clauses} AND {time_condition} AND ID < ?
     ORDER BY ID DESC
-    LIMIT COALESCE({n}, 999999);
+    LIMIT COALESCE(?, 999999);
     """
 
-    return sql_query
+    return sql_query, [*params, before_id, n]
 
-def get_num_filtered_clips_query(*, search: str = '', time_frame: str = '') -> str:
+def get_num_filtered_clips_query(*, search: str = '', time_frame: str = '') -> tuple[str, list]:
     """Construct a SQL query to count the number of filtered clips based on keywords and time frame."""
 
-    keyword_clauses: str = build_keyword_where_clause(search)
+    keyword_clauses, params = build_keyword_where_clause(search)
     time_condition: str = construct_time_condition_ge(time_frame)
 
     sql_query: str = f"""
@@ -70,24 +70,30 @@ def get_num_filtered_clips_query(*, search: str = '', time_frame: str = '') -> s
     WHERE {keyword_clauses} AND {time_condition}
     """
 
-    return sql_query
+    return sql_query, params
 
 # Query utilities
-def build_keyword_where_clause(search: str) -> str:
-    """Build the WHERE clause for the keyword search."""
+def build_keyword_where_clause(search: str) -> tuple[str, list]:
+    """Build the WHERE clause for the keyword search using parameterized queries."""
 
     # Split the search string into individual keywords
     delimiters: list[str] = [',', ';', '|', ' ', '\n', '\t']
     regex: str = '|'.join(re.escape(d) for d in delimiters)
-    split_keywords: list[str] = re.split(regex, search.strip())
+    split_keywords: list[str] = [kw for kw in re.split(regex, search.strip()) if kw]
 
-    # Construct the keyword clauses
-    keyword_clauses: str = ''
+    # Construct the keyword clauses and parameters
+    keyword_clauses_list = []
+    params = []
     for keyword in split_keywords:
-        keyword_clauses += f"Content LIKE '%{keyword}%' OR "
+        keyword_clauses_list.append("Content LIKE ?")
+        params.append(f"%{keyword}%")
 
-    # Remove the trailing ' OR ' from the WHERE clause
-    return keyword_clauses[:-4]
+    if keyword_clauses_list:
+        keyword_clauses = " AND ".join(keyword_clauses_list)
+    else:
+        keyword_clauses = "1=1"  # No search keywords, match all
+
+    return keyword_clauses, params
 
 def construct_time_condition_ge(time_frame: str) -> str:
     """Construct the time condition based on the selected time frame."""
