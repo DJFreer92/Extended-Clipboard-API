@@ -27,37 +27,28 @@ app/
   api/
     __init__.py
     main.py                     # FastAPI app entry (includes routers)
-    clipboard/
-      clipboard_endpoints.py    # HTTP routes for clipboard
+    endpoints/                  # HTTP route modules (grouped by feature)
   core/
     constants.py                # Paths and constants
   db/
     __init__.py
     db.py                       # DB helpers (init_db, execute_query)
-    clipboard.db                # SQLite database (created on first init)
     queries/                    # Reusable SQL query files
-      add_clip.sql
-      get_n_clips.sql
     schema/                     # DDL: tables, indexes, triggers, views
       tables/
-        clips.sql
       triggers/
-        delete_old_if_duplicate.sql
       indexes/
       views/
-  models/
-    clipboard/
-      clipboard_models.py       # Pydantic models (request/response)
-  services/
-    __init__.py
-    clipboard/
-      clipboard_service.py      # Business logic for clipboard
+  models/                       # Pydantic models (request/response)
+  services/                     # Business logic modules (grouped by feature)
 scripts/
   create_db.py                  # Initializes DB schema (runs init_db)
   run_api.py                    # Helper script to run the API
   run_poller.py                 # Optional: example poller/ingestion script
 tests/
-  test_query.py                 # Simple manual test script for queries
+  endpoint_tests/               # Tests for HTTP endpoints/routers
+  service_tests/                # Tests for service/business logic
+  db_tests/                     # Tests for queries, triggers, and DB helpers
 .github/
   copilot-instructions.md       # Copilot repository instructions
   instructions/                 # Language-specific Copilot instruction files
@@ -148,11 +139,7 @@ Visit the interactive docs:
 - Add new queries as `.sql` files in `app/db/queries/` and execute via the DB helper in `app/db/db.py`.
 - If you change behavior, add/update tests under `tests/`.
 
-Manual query sanity check:
 
-```bash
-python tests/test_query.py
-```
 
 ## Testing
 
