@@ -28,31 +28,31 @@ from app.core.constants import QUERIES_DIR, DB_PATH
 ADD_WITH_TS = QUERIES_DIR / "add_clip_with_timestamp.sql"
 
 
-def _random_past_timestamp(years: int = 2) -> str:
-    """Return an ISO 8601 timestamp string within the past `years` years.
-
-    SQLite DATETIME accepts ISO-8601 'YYYY-MM-DD HH:MM:SS' by default, but
-    we'll include seconds precision. We avoid timezone info and use local time.
-    """
+def _sorted_random_timestamps(n: int, years: int = 2) -> list[str]:
+    """Generate n random timestamps over the past `years` years, sorted oldest→newest."""
     now = datetime.now()
     earliest = now - timedelta(days=365 * years)
-    # Pick a random delta between earliest and now
     total_seconds = int((now - earliest).total_seconds())
-    offset = random.randint(0, total_seconds)
-    ts = earliest + timedelta(seconds=offset)
-    return ts.strftime("%Y-%m-%d %H:%M:%S")
+    offsets = [random.randint(0, total_seconds) for _ in range(n)]
+    offsets.sort()  # ensures we insert oldest first, newest last
+    return [
+        (earliest + timedelta(seconds=o)).strftime("%Y-%m-%d %H:%M:%S")
+        for o in offsets
+    ]
 
 
 def seed(n: int = 1000) -> None:
     # Ensure DB exists and schema is applied
     init_db()
 
+    # Precompute timestamps oldest→newest and insert in that order
+    timestamps = _sorted_random_timestamps(n, 2)
+
     # Insert n clips
-    for i in range(1, n + 1):
+    for i, ts in enumerate(timestamps, start=1):
         content = f"Seeded clip #{i} — {random.choice(['alpha', 'beta', 'gamma', 'delta', 'epsilon'])}"
         # ensure slight content variability to avoid trigger deletion
         content += f" — token:{random.randint(100000, 999999)}"
-        ts = _random_past_timestamp(2)
         execute_query(ADD_WITH_TS, {"content": content, "timestamp": ts})
 
     # Report final count

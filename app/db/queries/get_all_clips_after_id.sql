@@ -1,0 +1,3 @@
+SELECT * FROM Clips
+WHERE ID > :before_id
+ORDER BY ID DESC;
