@@ -20,7 +20,7 @@ def init_db() -> None:
         conn.commit()
         print(f"Database created at {DB_PATH}")
 
-def execute_query(filename: Path | str, params: tuple | dict | None = None):
+def execute_query(filename: Path | str, params: tuple | dict | None = None) -> list:
     """Loads a SQL query from file and executes it with optional parameters."""
     query_path: Path = QUERIES_DIR / filename
     if not query_path.exists():
@@ -31,5 +31,22 @@ def execute_query(filename: Path | str, params: tuple | dict | None = None):
     with get_connection() as conn:
         cursor: sqlite3.Cursor = conn.cursor()
         cursor.execute(sql, params or ())
+        results: list = cursor.fetchall()
+        return results
+
+def execute_dynamic_query(query: callable, params: tuple | dict | None = None) -> list:
+    """Executes a dynamically provided SQL query with optional parameters."""
+
+    with get_connection() as conn:
+        cursor: sqlite3.Cursor = conn.cursor()
+        # Build the SQL string from the callable without arguments; params (if any)
+        # are passed to cursor.execute separately.
+        result = query()
+        if isinstance(result, tuple) and len(result) == 2:
+            sql, query_params = result
+            cursor.execute(sql, query_params)
+        else:
+            sql = result
+            cursor.execute(sql, params or ())
         results: list = cursor.fetchall()
         return results
