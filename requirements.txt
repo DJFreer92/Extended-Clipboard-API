@@ -3,3 +3,4 @@ uvicorn
 sqlalchemy
 pyperclip
 pydantic
+python-dotenv

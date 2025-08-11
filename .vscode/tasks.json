@@ -1,0 +1,29 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Run tests in venv",
+			"type": "shell",
+			"command": "/Users/Daniel/Desktop/Personal/Programming/Unity/Extended-Clipboard-API/.venv/bin/pytest",
+			"args": [
+				"-q"
+			]
+		},
+		{
+			"label": "Run tests in venv",
+			"type": "shell",
+			"command": "/Users/Daniel/Desktop/Personal/Programming/Unity/Extended-Clipboard-API/.venv/bin/pytest",
+			"args": [
+				"-q"
+			]
+		},
+		{
+			"label": "Run tests in venv",
+			"type": "shell",
+			"command": "/Users/Daniel/Desktop/Personal/Programming/Unity/Extended-Clipboard-API/.venv/bin/pytest",
+			"args": [
+				"-q"
+			]
+		}
+	]
+}
