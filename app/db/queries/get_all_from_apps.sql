@@ -1,0 +1,1 @@
+SELECT DISTINCT(FromAppName) AS Apps FROM Clips

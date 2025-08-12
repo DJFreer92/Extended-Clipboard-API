@@ -1,0 +1,1 @@
+DELETE FROM Tags WHERE ID = :tag_id AND NOT EXISTS (SELECT 1 FROM ClipTags WHERE TagID = :tag_id);
