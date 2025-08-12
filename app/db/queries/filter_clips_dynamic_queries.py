@@ -7,112 +7,126 @@ def filter_all_clips_query(filters: Filters) -> tuple[str, list]:
 
     keyword_clauses, keyword_params = build_keywords_where_clause(filters.search)
     tag_clauses, tag_params = build_tags_where_clause(filters.selected_tags)
+    app_clauses, app_params = build_apps_where_clause(filters.selected_apps)
     join_favorites: str = construct_favorites_join_clause(filters.favorites_only)
     time_condition: str = construct_time_condition(filters.time_frame)
 
+    # Always LEFT JOIN FavoriteClips to compute IsFavorite; if favorites_only we already switched join_favorites to INNER JOIN
+    favorites_join = join_favorites or "LEFT JOIN FavoriteClips ON Clips.ID = FavoriteClips.ClipID"
     sql_query: str = f"""
     SELECT
         Clips.ID AS ClipID,
         Clips.Content AS Content,
         Clips.FromAppName AS FromAppName,
         GROUP_CONCAT(Tags.Name, ',') AS Tags,
-        Clips.Timestamp AS Timestamp
+        Clips.Timestamp AS Timestamp,
+        CASE WHEN FavoriteClips.ClipID IS NOT NULL THEN 1 ELSE 0 END AS IsFavorite
     FROM Clips
-    {join_favorites}
+    {favorites_join}
     LEFT JOIN ClipTags ON Clips.ID = ClipTags.ClipID
     LEFT JOIN Tags ON ClipTags.TagID = Tags.ID
-    WHERE ({keyword_clauses}) AND ({tag_clauses}) AND ({time_condition})
+    WHERE ({keyword_clauses}) AND ({tag_clauses}) AND ({app_clauses}) AND ({time_condition})
     GROUP BY Clips.ID, Clips.Content, Clips.FromAppName, Clips.Timestamp
     ORDER BY Clips.ID DESC;
     """
 
-    return sql_query, keyword_params + tag_params
+    return sql_query, keyword_params + tag_params + app_params
 
 def filter_n_clips_query(filters: Filters, *, n: int | None = None) -> tuple[str, list]:
     """Construct a SQL query to filter a specific number of clips based on keywords and time frame."""
 
     keyword_clauses, keyword_params = build_keywords_where_clause(filters.search)
     tag_clauses, tag_params = build_tags_where_clause(filters.selected_tags)
+    app_clauses, app_params = build_apps_where_clause(filters.selected_apps)
     join_favorites: str = construct_favorites_join_clause(filters.favorites_only)
     time_condition: str = construct_time_condition(filters.time_frame)
 
+    favorites_join = join_favorites or "LEFT JOIN FavoriteClips ON Clips.ID = FavoriteClips.ClipID"
     sql_query: str = f"""
     SELECT
         Clips.ID AS ClipID,
         Clips.Content AS Content,
         Clips.FromAppName AS FromAppName,
         GROUP_CONCAT(Tags.Name, ',') AS Tags,
-        Clips.Timestamp AS Timestamp
+        Clips.Timestamp AS Timestamp,
+        CASE WHEN FavoriteClips.ClipID IS NOT NULL THEN 1 ELSE 0 END AS IsFavorite
     FROM Clips
-    {join_favorites}
+    {favorites_join}
     LEFT JOIN ClipTags ON Clips.ID = ClipTags.ClipID
     LEFT JOIN Tags ON ClipTags.TagID = Tags.ID
-    WHERE ({keyword_clauses}) AND ({tag_clauses}) AND ({time_condition})
+    WHERE ({keyword_clauses}) AND ({tag_clauses}) AND ({app_clauses}) AND ({time_condition})
     GROUP BY Clips.ID, Clips.Content, Clips.FromAppName, Clips.Timestamp
     ORDER BY Clips.ID DESC
     LIMIT COALESCE({n}, 999999);
     """
 
-    return sql_query, keyword_params + tag_params
+    return sql_query, keyword_params + tag_params + app_params
 
 def filter_all_clips_after_id_query(filters: Filters, *, after_id: int) -> tuple[str, list]:
     """Construct a SQL query to filter clips based on keywords and time frame, starting after a specific ID."""
 
     keyword_clauses, keyword_params = build_keywords_where_clause(filters.search)
     tag_clauses, tag_params = build_tags_where_clause(filters.selected_tags)
+    app_clauses, app_params = build_apps_where_clause(filters.selected_apps)
     join_favorites: str = construct_favorites_join_clause(filters.favorites_only)
     time_condition: str = construct_time_condition(filters.time_frame)
 
+    favorites_join = join_favorites or "LEFT JOIN FavoriteClips ON Clips.ID = FavoriteClips.ClipID"
     sql_query: str = f"""
     SELECT
         Clips.ID AS ClipID,
         Clips.Content AS Content,
         Clips.FromAppName AS FromAppName,
         GROUP_CONCAT(Tags.Name, ',') AS Tags,
-        Clips.Timestamp AS Timestamp
+        Clips.Timestamp AS Timestamp,
+        CASE WHEN FavoriteClips.ClipID IS NOT NULL THEN 1 ELSE 0 END AS IsFavorite
     FROM Clips
-    {join_favorites}
+    {favorites_join}
     LEFT JOIN ClipTags ON Clips.ID = ClipTags.ClipID
     LEFT JOIN Tags ON ClipTags.TagID = Tags.ID
-    WHERE ({keyword_clauses}) AND ({tag_clauses}) AND ({time_condition}) AND Clips.ID > ?
+    WHERE ({keyword_clauses}) AND ({tag_clauses}) AND ({app_clauses}) AND ({time_condition}) AND Clips.ID > ?
     GROUP BY Clips.ID, Clips.Content, Clips.FromAppName, Clips.Timestamp
     ORDER BY Clips.ID DESC;
     """
 
-    return sql_query, [*keyword_params, *tag_params, after_id]
+    return sql_query, [*keyword_params, *tag_params, *app_params, after_id]
 
 def filter_n_clips_before_id_query(filters: Filters, *, n: int | None = None, before_id: int) -> tuple[str, list]:
     """Construct a SQL query to filter a specific number of clips based on keywords and time frame, starting before a specific ID."""
 
     keyword_clauses, keyword_params = build_keywords_where_clause(filters.search)
     tag_clauses, tag_params = build_tags_where_clause(filters.selected_tags)
+    app_clauses, app_params = build_apps_where_clause(filters.selected_apps)
     join_favorites: str = construct_favorites_join_clause(filters.favorites_only)
     time_condition: str = construct_time_condition(filters.time_frame)
 
+    favorites_join = join_favorites or "LEFT JOIN FavoriteClips ON Clips.ID = FavoriteClips.ClipID"
     sql_query: str = f"""
     SELECT
         Clips.ID AS ClipID,
         Clips.Content AS Content,
         Clips.FromAppName AS FromAppName,
         GROUP_CONCAT(Tags.Name, ',') AS Tags,
-        Clips.Timestamp AS Timestamp
+        Clips.Timestamp AS Timestamp,
+        CASE WHEN FavoriteClips.ClipID IS NOT NULL THEN 1 ELSE 0 END AS IsFavorite
     FROM Clips
-    {join_favorites}
+    {favorites_join}
     LEFT JOIN ClipTags ON Clips.ID = ClipTags.ClipID
     LEFT JOIN Tags ON ClipTags.TagID = Tags.ID
-    WHERE ({keyword_clauses}) AND ({tag_clauses}) AND ({time_condition}) AND Clips.ID < ?
+    WHERE ({keyword_clauses}) AND ({tag_clauses}) AND ({app_clauses}) AND ({time_condition}) AND Clips.ID < ?
     GROUP BY Clips.ID, Clips.Content, Clips.FromAppName, Clips.Timestamp
     ORDER BY Clips.ID DESC
     LIMIT COALESCE(?, 999999);
     """
 
-    return sql_query, [*keyword_params, *tag_params, before_id, n]
+    return sql_query, [*keyword_params, *tag_params, *app_params, before_id, n]
 
 def get_num_filtered_clips_query(filters: Filters) -> tuple[str, list]:
     """Construct a SQL query to count the number of filtered clips based on keywords and time frame."""
 
     keyword_clauses, keyword_params = build_keywords_where_clause(filters.search)
     tag_clauses, tag_params = build_tags_where_clause(filters.selected_tags)
+    app_clauses, app_params = build_apps_where_clause(filters.selected_apps)
     join_favorites: str = construct_favorites_join_clause(filters.favorites_only)
     time_condition: str = construct_time_condition(filters.time_frame)
 
@@ -122,10 +136,10 @@ def get_num_filtered_clips_query(filters: Filters) -> tuple[str, list]:
     {join_favorites}
     LEFT JOIN ClipTags ON Clips.ID = ClipTags.ClipID
     LEFT JOIN Tags ON ClipTags.TagID = Tags.ID
-    WHERE ({keyword_clauses}) AND ({tag_clauses}) AND ({time_condition})
+    WHERE ({keyword_clauses}) AND ({tag_clauses}) AND ({app_clauses}) AND ({time_condition})
     """
 
-    return sql_query, [*keyword_params, *tag_params]
+    return sql_query, [*keyword_params, *tag_params, *app_params]
 
 # Query utilities
 def build_keywords_where_clause(search: str) -> tuple[str, list]:
@@ -166,6 +180,14 @@ def build_tags_where_clause(selected_tags: list[str]) -> tuple[str, list]:
         tag_clauses = "1=1"  # No selected tags, match all
 
     return tag_clauses, params
+
+
+def build_apps_where_clause(selected_apps: list[str]) -> tuple[str, list]:
+    """Build the WHERE clause for filtering by source application (FromAppName)."""
+    if not selected_apps:
+        return "1=1", []
+    clauses = ["FromAppName = ?" for _ in selected_apps]
+    return " OR ".join(clauses), selected_apps
 
 
 def construct_favorites_join_clause(favoritesOnly: bool) -> str:

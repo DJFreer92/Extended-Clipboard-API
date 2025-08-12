@@ -14,8 +14,8 @@ client = TestClient(app)
 def test_get_recent_clips_endpoint_returns_clips_json():
     fake = Clips(
         clips=[
-            Clip(id=1, content="a", timestamp="2025-01-01T00:00:00Z"),
-            Clip(id=2, content="b", timestamp="2025-01-02T00:00:00Z"),
+            Clip(id=1, content="a", timestamp="2025-01-01T00:00:00Z", is_favorite=True),
+            Clip(id=2, content="b", timestamp="2025-01-02T00:00:00Z", is_favorite=False),
         ]
     )
 
@@ -33,7 +33,7 @@ def test_get_recent_clips_endpoint_returns_clips_json():
 def test_get_all_clips_endpoint_returns_clips_json():
     fake = Clips(
         clips=[
-            Clip(id=1, content="a", timestamp="2025-01-01T00:00:00Z"),
+            Clip(id=1, content="a", timestamp="2025-01-01T00:00:00Z", is_favorite=False),
         ]
     )
 
@@ -111,14 +111,14 @@ def test_dynamic_filter_endpoints():
             "/clipboard/filter_all_clips",
             params={"search": "a", "time_frame": "", "selected_tags": ["x"], "favorites_only": True},
         ).status_code == 200
-        m.assert_called_once_with("a", "", ["x"], True)
+        m.assert_called_once_with("a", "", ["x"], [], True)
 
     with patch("app.api.clipboard.clipboard_endpoints.clipboard_service.filter_n_clips", return_value=dummy) as m:
         assert client.get(
             "/clipboard/filter_n_clips",
             params={"search": "a", "time_frame": "", "n": 1, "selected_tags": ["x"], "favorites_only": False},
         ).status_code == 200
-        m.assert_called_once_with("a", "", 1, ["x"], False)
+        m.assert_called_once_with("a", "", 1, ["x"], [], False)
 
     with patch(
         "app.api.clipboard.clipboard_endpoints.clipboard_service.filter_all_clips_after_id",
@@ -128,7 +128,7 @@ def test_dynamic_filter_endpoints():
             "/clipboard/filter_all_clips_after_id",
             params={"search": "", "time_frame": "", "after_id": 2, "selected_tags": [], "favorites_only": False},
         ).status_code == 200
-    m.assert_called_once_with("", "", 2, [], False)
+    m.assert_called_once_with("", "", 2, [], [], False)
 
     with patch(
         "app.api.clipboard.clipboard_endpoints.clipboard_service.filter_n_clips_before_id",
@@ -138,7 +138,7 @@ def test_dynamic_filter_endpoints():
             "/clipboard/filter_n_clips_before_id",
             params={"search": "", "time_frame": "", "n": 1, "before_id": 4, "selected_tags": [], "favorites_only": False},
         ).status_code == 200
-        m.assert_called_once_with("", "", 1, 4, [], False)
+        m.assert_called_once_with("", "", 1, 4, [], [], False)
 
     with patch("app.api.clipboard.clipboard_endpoints.clipboard_service.get_num_filtered_clips", return_value=7) as m:
         resp = client.get(
@@ -147,7 +147,7 @@ def test_dynamic_filter_endpoints():
         )
         assert resp.status_code == 200
         assert resp.json() == 7
-        m.assert_called_once_with("", "", [], False)
+        m.assert_called_once_with("", "", [], [], False)
 
 
 def test_tag_and_favorite_endpoints():
@@ -196,4 +196,12 @@ def test_tag_and_favorite_endpoints():
         resp = client.get("/clipboard/get_num_favorites")
         assert resp.status_code == 200
         assert resp.json() == 4
+        m.assert_called_once_with()
+
+
+def test_get_all_from_apps_endpoint():
+    with patch("app.api.clipboard.clipboard_endpoints.clipboard_service.get_all_from_apps", return_value=["Chrome", "Safari"]) as m:
+        resp = client.get("/clipboard/get_all_from_apps")
+        assert resp.status_code == 200
+        assert set(resp.json()) == {"Chrome", "Safari"}
         m.assert_called_once_with()

@@ -47,9 +47,10 @@ def filter_all_clips(
     search: str = "",
     time_frame: str = "",
     selected_tags: list[str] = Query(default=[]),
+    selected_apps: list[str] = Query(default=[]),
     favorites_only: bool = False,
 ) -> Clips:
-    return clipboard_service.filter_all_clips(search, time_frame, selected_tags, favorites_only)
+    return clipboard_service.filter_all_clips(search, time_frame, selected_tags, selected_apps, favorites_only)
 
 
 @router.get("/filter_n_clips")
@@ -58,9 +59,10 @@ def filter_n_clips(
     time_frame: str = "",
     n: int | None = Query(None, ge=1),
     selected_tags: list[str] = Query(default=[]),
+    selected_apps: list[str] = Query(default=[]),
     favorites_only: bool = False,
 ) -> Clips:
-    return clipboard_service.filter_n_clips(search, time_frame, n, selected_tags, favorites_only)
+    return clipboard_service.filter_n_clips(search, time_frame, n, selected_tags, selected_apps, favorites_only)
 
 
 @router.get("/filter_all_clips_after_id")
@@ -69,9 +71,10 @@ def filter_all_clips_after_id(
     time_frame: str = "",
     after_id: int = Query(..., ge=0),
     selected_tags: list[str] = Query(default=[]),
+    selected_apps: list[str] = Query(default=[]),
     favorites_only: bool = False,
 ) -> Clips:
-    return clipboard_service.filter_all_clips_after_id(search, time_frame, after_id, selected_tags, favorites_only)
+    return clipboard_service.filter_all_clips_after_id(search, time_frame, after_id, selected_tags, selected_apps, favorites_only)
 
 
 @router.get("/filter_n_clips_before_id")
@@ -81,9 +84,10 @@ def filter_n_clips_before_id(
     n: int | None = Query(None, ge=1),
     before_id: int = Query(..., ge=0),
     selected_tags: list[str] = Query(default=[]),
+    selected_apps: list[str] = Query(default=[]),
     favorites_only: bool = False,
 ) -> Clips:
-    return clipboard_service.filter_n_clips_before_id(search, time_frame, n, before_id, selected_tags, favorites_only)
+    return clipboard_service.filter_n_clips_before_id(search, time_frame, n, before_id, selected_tags, selected_apps, favorites_only)
 
 
 @router.get("/get_num_filtered_clips")
@@ -91,9 +95,10 @@ def get_num_filtered_clips(
     search: str = "",
     time_frame: str = "",
     selected_tags: list[str] = Query(default=[]),
+    selected_apps: list[str] = Query(default=[]),
     favorites_only: bool = False,
 ) -> int:
-    return clipboard_service.get_num_filtered_clips(search, time_frame, selected_tags, favorites_only)
+    return clipboard_service.get_num_filtered_clips(search, time_frame, selected_tags, selected_apps, favorites_only)
 
 
 # Tag endpoints
@@ -136,3 +141,8 @@ def get_all_favorites():
 @router.get("/get_num_favorites")
 def get_num_favorites() -> int:
     return clipboard_service.get_num_favorites()
+
+
+@router.get("/get_all_from_apps")
+def get_all_from_apps() -> list[str]:
+    return clipboard_service.get_all_from_apps()

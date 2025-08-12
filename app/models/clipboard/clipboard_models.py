@@ -8,6 +8,7 @@ class Clip(BaseModel):
     from_app_name: Optional[str] = None
     tags: List[str] = []
     timestamp: str
+    is_favorite: bool = False
 
 
 class Clips(BaseModel):

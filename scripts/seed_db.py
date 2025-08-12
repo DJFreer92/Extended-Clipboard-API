@@ -3,7 +3,7 @@ from __future__ import annotations
 """
 Seed the SQLite database with sample Clips.
 
-- Inserts 1000 clips with unique content.
+- Inserts 100 clips with unique content.
 - Timestamps are distributed randomly over the last 2 years.
 - Uses the project's DB helper and SQL files (no inline SQL).
 
@@ -23,7 +23,13 @@ if str(repo_root) not in sys.path:
     sys.path.insert(0, str(repo_root))
 
 from app.db.db import execute_query, init_db
-from app.core.constants import QUERIES_DIR, DB_PATH
+from app.core.constants import (
+    QUERIES_DIR,
+    DB_PATH,
+    ADD_TAG_IF_NOT_EXISTS,
+    ADD_CLIP_TAG,
+    ADD_FAVORITE,
+)
 
 ADD_WITH_TS = QUERIES_DIR / "add_clip_with_timestamp.sql"
 
@@ -41,19 +47,56 @@ def _sorted_random_timestamps(n: int, years: int = 2) -> list[str]:
     ]
 
 
-def seed(n: int = 1000) -> None:
+def _maybe_add_tags_and_favorite(clip_id: int, possible_tags: list[str], tag_chance: float = 0.5, fav_chance: float = 0.15) -> None:
+    """Randomly assign 0..N tags and maybe favorite to a clip.
+
+    tag_chance: probability per tag to be considered for assignment.
+    fav_chance: probability to mark as favorite.
+    """
+    # Decide tags
+    chosen = [t for t in possible_tags if random.random() < tag_chance]
+    for tag in chosen:
+        execute_query(ADD_TAG_IF_NOT_EXISTS, {"tag_name": tag})
+        execute_query(ADD_CLIP_TAG, {"clip_id": clip_id, "tag_name": tag})
+    # Maybe favorite
+    if random.random() < fav_chance:
+        execute_query(ADD_FAVORITE, {"clip_id": clip_id})
+
+
+def seed(n: int = 100) -> None:
     # Ensure DB exists and schema is applied
     init_db()
 
     # Precompute timestamps oldest→newest and insert in that order
     timestamps = _sorted_random_timestamps(n, 2)
 
-    # Insert n clips
+    app_names = ["Safari", "Chrome", "VSCode", "Terminal", "Notes", "Mail", None]
+    tag_pool = ["work", "personal", "todo", "idea", "code", "quote", "ref"]
+
+    # Insert n clips (collect assigned IDs after each batch insert via querying last rowid indirectly)
+    # We rely on autoincrement IDs being sequential; fetch current max ID beforehand
+    starting_rows = execute_query("get_all_clips.sql")
+    start_count = len(starting_rows)
+
     for i, ts in enumerate(timestamps, start=1):
-        content = f"Seeded clip #{i} — {random.choice(['alpha', 'beta', 'gamma', 'delta', 'epsilon'])}"
-        # ensure slight content variability to avoid trigger deletion
-        content += f" — token:{random.randint(100000, 999999)}"
-        execute_query(ADD_WITH_TS, {"content": content, "timestamp": ts})
+        base_token = random.randint(10000, 999999)
+        content = (
+            f"Seeded clip #{start_count + i} — {random.choice(['alpha', 'beta', 'gamma', 'delta', 'epsilon'])}"
+            f" — token:{base_token}"
+        )
+        from_app = random.choice(app_names)
+        execute_query(ADD_WITH_TS, {"content": content, "timestamp": ts, "from_app_name": from_app})
+        # Determine clip ID: query last inserted clip quickly (cheaper than full list every time)
+        # Use get_all_clips.sql limited by n=1 via existing query is not parameterized; fallback to full fetch occasionally
+        if i % 50 == 0:
+            # periodic full fetch to keep correctness simple
+            current = execute_query("get_all_clips.sql")
+            clip_id = current[0][0]  # first row is latest due to ORDER BY DESC
+        else:
+            # lightweight: still fetch but acceptable for n<=100
+            current = execute_query("get_all_clips.sql")
+            clip_id = current[0][0]
+        _maybe_add_tags_and_favorite(clip_id, tag_pool)
 
     # Report final count
     rows = execute_query("get_all_clips.sql")
@@ -61,4 +104,4 @@ def seed(n: int = 1000) -> None:
 
 
 if __name__ == "__main__":
-    seed(1000)
+    seed(100)

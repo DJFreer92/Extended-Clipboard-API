@@ -115,10 +115,13 @@ def test_dynamic_filter_queries(temp_db: None):
     from app.models.clipboard.filters import Filters
     rows = execute_dynamic_query(lambda: filter_all_clips_query(Filters(search="alpha")))
     assert len(rows) == 2
+    # New column IsFavorite at index 5 (may be 0/1); ensure row length >=5
+    assert all(len(r) >= 5 for r in rows)
 
     # filter n with n=1
     rows = execute_dynamic_query(lambda: filter_n_clips_query(Filters(search="beta"), n=1))
     assert len(rows) == 1
+    assert len(rows[0]) >= 5
 
     # after_id
     rows = execute_dynamic_query(lambda: filter_all_clips_after_id_query(Filters(), after_id=2))
@@ -137,8 +140,10 @@ def test_add_clip_with_timestamp(temp_db: None):
     execute_query(ADD_CLIP_WITH_TIMESTAMP, {"content": "ts-test", "timestamp": "2024-01-01 12:00:00", "from_app_name": None})
     rows = execute_query(GET_ALL_CLIPS)
     assert rows[0][1] == "ts-test"
-    # Updated schema: Timestamp column index shifted to 4 after joins in some queries; here table direct insertion
-    assert re.match(r"\d{4}-\d{2}-\d{2} ", rows[0][-1])
+    # Updated schema: static retrieval now returns (ID, Content, FromAppName, Tags, Timestamp, IsFavorite)
+    timestamp_val = rows[0][4]
+    assert isinstance(timestamp_val, str)
+    assert re.match(r"\d{4}-\d{2}-\d{2} ", timestamp_val)
 
 
 def test_tag_and_favorite_queries(temp_db: None):

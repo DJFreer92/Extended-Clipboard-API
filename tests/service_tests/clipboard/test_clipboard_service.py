@@ -11,8 +11,8 @@ from app.services.clipboard import clipboard_service
 @pytest.fixture
 def fake_rows() -> list[dict[str, Any]]:
     return [
-        {"ClipID": 1, "Content": "alpha", "FromAppName": "AppA", "Tags": "x,y", "Timestamp": "2025-01-01T00:00:00Z"},
-        {"ClipID": 2, "Content": "beta", "FromAppName": None, "Tags": None, "Timestamp": "2025-01-02T00:00:00Z"},
+    {"ClipID": 1, "Content": "alpha", "FromAppName": "AppA", "Tags": "x,y", "Timestamp": "2025-01-01T00:00:00Z", "IsFavorite": 1},
+    {"ClipID": 2, "Content": "beta", "FromAppName": None, "Tags": None, "Timestamp": "2025-01-02T00:00:00Z", "IsFavorite": 0},
     ]
 
 
@@ -24,7 +24,8 @@ def test_get_recent_clips_maps_rows_to_model(fake_rows: list[dict[str, Any]]):
         assert result.clips[0].id == 1
         assert result.clips[0].content == "alpha"
         assert result.clips[0].from_app_name == "AppA"
-        assert result.clips[0].tags == ["x", "y"]
+    assert result.clips[0].tags == ["x", "y"]
+    assert result.clips[0].is_favorite is True
 
 
 def test_get_all_clips_maps_rows_to_model(fake_rows: list[dict[str, Any]]):
@@ -117,27 +118,28 @@ def test_add_clip_with_timestamp_calls_execute_query():
 def test_dynamic_filters_use_execute_dynamic_query():
     from app.services.clipboard import clipboard_service as svc
 
-    with patch("app.services.clipboard.clipboard_service.execute_dynamic_query", return_value=[(1, "a", None, "x,y", "t")]) as exec_d:
-        out = svc.filter_all_clips("a", "", ["x"], True)
+    with patch("app.services.clipboard.clipboard_service.execute_dynamic_query", return_value=[(1, "a", None, "x,y", "t", 1)]) as exec_d:
+        out = svc.filter_all_clips("a", "", ["x"], [], True)
         exec_d.assert_called()
         assert out.clips[0].content == "a"
+        assert out.clips[0].is_favorite is True
 
-    with patch("app.services.clipboard.clipboard_service.execute_dynamic_query", return_value=[(1, "a", None, None, "t")]) as exec_d:
-        out = svc.filter_n_clips("a", "", 1, ["x"], False)
+    with patch("app.services.clipboard.clipboard_service.execute_dynamic_query", return_value=[(1, "a", None, None, "t", 0)]) as exec_d:
+        out = svc.filter_n_clips("a", "", 1, ["x"], [], False)
         exec_d.assert_called()
 
-    with patch("app.services.clipboard.clipboard_service.execute_dynamic_query", return_value=[(2, "b", None, None, "t")]) as exec_d:
-        out = svc.filter_all_clips_after_id("", "", 1, [], False)
+    with patch("app.services.clipboard.clipboard_service.execute_dynamic_query", return_value=[(2, "b", None, None, "t", 0)]) as exec_d:
+        out = svc.filter_all_clips_after_id("", "", 1, [], [], False)
         exec_d.assert_called()
         assert out.clips[0].id == 2
 
-    with patch("app.services.clipboard.clipboard_service.execute_dynamic_query", return_value=[(3, "c", None, None, "t")]) as exec_d:
-        out = svc.filter_n_clips_before_id("", "", 1, 4, [], False)
+    with patch("app.services.clipboard.clipboard_service.execute_dynamic_query", return_value=[(3, "c", None, None, "t", 0)]) as exec_d:
+        out = svc.filter_n_clips_before_id("", "", 1, 4, [], [], False)
         exec_d.assert_called()
         assert out.clips[0].id == 3
 
     with patch("app.services.clipboard.clipboard_service.execute_dynamic_query", return_value=[(7,)]) as exec_d:
-        count = svc.get_num_filtered_clips("", "", [], False)
+        count = svc.get_num_filtered_clips("", "", [], [], False)
         exec_d.assert_called()
         assert count == 7
 
@@ -178,3 +180,11 @@ def test_tag_and_favorite_methods():
     with patch("app.services.clipboard.clipboard_service.execute_query", return_value=[(10,)]) as exec_q:
         fav_count = svc.get_num_favorites()
         assert fav_count == 10
+
+
+def test_get_all_from_apps():
+    from app.services.clipboard import clipboard_service as svc
+    with patch("app.services.clipboard.clipboard_service.execute_query", return_value=[("Chrome",), ("Safari",), (None,)]) as exec_q:
+        apps = svc.get_all_from_apps()
+        exec_q.assert_called_once()
+        assert set(apps) == {"Chrome", "Safari"}
