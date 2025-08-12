@@ -62,7 +62,9 @@ function openDb(Database, dbPath, key, driver) {
     // ignore if not supported
   }
   // Apply SQLCipher key; works with sqlcipher-enabled builds
-  db.pragma(`key = "${key.replace(/"/g, '""')}"`);
+  // Escape backslashes, double quotes, and single quotes in the key
+  const safeKey = key.replace(/\\/g, '\\\\').replace(/"/g, '""').replace(/'/g, "''");
+  db.pragma(`key = "${safeKey}"`);
   // Verify key by touching the database and reading cipher_version
   db.pragma('journal_mode = WAL');
   if (driver !== 'mc') {

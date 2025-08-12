@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from uvicorn import run
-import os
 
 # Ensure the repository root is on sys.path so 'app' package imports resolve
 import sys

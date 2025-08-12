@@ -76,7 +76,7 @@ def _run_node(payload: dict[str, Any]) -> dict[str, Any]:
     )
 
     if proc.returncode != 0:
-        stderr = proc.stderr.decode('utf-8', errors='ignore')
+        stderr = proc.stderr.decode('utf-8', errors='replace')
         stdout = proc.stdout.decode('utf-8', errors='ignore')
         raise RuntimeError(
             f"DB runner failed (exit {proc.returncode})\nSTDOUT:\n{stdout}\nSTDERR:\n{stderr}"
