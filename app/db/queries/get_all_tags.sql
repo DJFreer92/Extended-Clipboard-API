@@ -1,0 +1,5 @@
+SELECT
+	ID,
+	Name
+FROM Tags
+ORDER BY Name ASC;

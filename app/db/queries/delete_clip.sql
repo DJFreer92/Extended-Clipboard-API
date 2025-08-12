@@ -1,1 +1,1 @@
-DELETE FROM Clips WHERE ID = ?;
+DELETE FROM Clips WHERE ID = :clip_id

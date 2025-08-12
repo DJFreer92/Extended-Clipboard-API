@@ -20,8 +20,8 @@ def temp_db(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Iterator[None]:
 
 
 def test_trigger_delete_old_if_duplicate_keeps_single_latest_row(temp_db: None) -> None:
-    execute_query(ADD_CLIP, {"content": "dup"})
-    execute_query(ADD_CLIP, {"content": "dup"})
+    execute_query(ADD_CLIP, {"content": "dup", "from_app_name": None})
+    execute_query(ADD_CLIP, {"content": "dup", "from_app_name": None})
 
     rows = execute_query(GET_ALL_CLIPS)
     assert len(rows) == 1

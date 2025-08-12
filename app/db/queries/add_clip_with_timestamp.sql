@@ -1,2 +1,2 @@
-INSERT INTO Clips (Content, Timestamp)
-VALUES (:content, :timestamp);
+INSERT INTO Clips (Content, FromAppName, Timestamp)
+VALUES (:content, :from_app_name, :timestamp);
