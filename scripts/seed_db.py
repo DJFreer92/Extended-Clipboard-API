@@ -73,8 +73,8 @@ def seed(n: int = 100) -> None:
     app_names = ["Safari", "Chrome", "VSCode", "Terminal", "Notes", "Mail", None]
     tag_pool = ["work", "personal", "todo", "idea", "code", "quote", "ref"]
 
-    # Insert n clips (collect assigned IDs after each batch insert via querying last rowid indirectly)
-    # We rely on autoincrement IDs being sequential; fetch current max ID beforehand
+    # Insert n clips (collect assigned IDs after each insert using last_insert_rowid)
+    # Fetch current max ID beforehand for display purposes
     starting_rows = execute_query("get_all_clips.sql")
     start_count = len(starting_rows)
 
@@ -86,16 +86,9 @@ def seed(n: int = 100) -> None:
         )
         from_app = random.choice(app_names)
         execute_query(ADD_WITH_TS, {"content": content, "timestamp": ts, "from_app_name": from_app})
-        # Determine clip ID: query last inserted clip quickly (cheaper than full list every time)
-        # Use get_all_clips.sql limited by n=1 via existing query is not parameterized; fallback to full fetch occasionally
-        if i % 50 == 0:
-            # periodic full fetch to keep correctness simple
-            current = execute_query("get_all_clips.sql")
-            clip_id = current[0][0]  # first row is latest due to ORDER BY DESC
-        else:
-            # lightweight: still fetch but acceptable for n<=100
-            current = execute_query("get_all_clips.sql")
-            clip_id = current[0][0]
+        # Get last inserted row ID using SQLite's last_insert_rowid()
+        last_id_row = execute_query("SELECT last_insert_rowid();")
+        clip_id = last_id_row[0][0]
         _maybe_add_tags_and_favorite(clip_id, tag_pool)
 
     # Report final count
@@ -104,4 +97,4 @@ def seed(n: int = 100) -> None:
 
 
 if __name__ == "__main__":
-    seed(100)
+    seed()

@@ -115,13 +115,14 @@ def test_dynamic_filter_queries(temp_db: None):
     from app.models.clipboard.filters import Filters
     rows = execute_dynamic_query(lambda: filter_all_clips_query(Filters(search="alpha")))
     assert len(rows) == 2
-    # New column IsFavorite at index 5 (may be 0/1); ensure row length >=5
-    assert all(len(r) >= 5 for r in rows)
+    # New column IsFavorite at index IS_FAVORITE_COL (may be 0/1); ensure row length >= IS_FAVORITE_COL
+    IS_FAVORITE_COL = 5  # Index of IsFavorite column in the result set
+    assert all(len(r) >= IS_FAVORITE_COL for r in rows)
 
     # filter n with n=1
     rows = execute_dynamic_query(lambda: filter_n_clips_query(Filters(search="beta"), n=1))
     assert len(rows) == 1
-    assert len(rows[0]) >= 5
+    assert len(rows[0]) >= IS_FAVORITE_COL
 
     # after_id
     rows = execute_dynamic_query(lambda: filter_all_clips_after_id_query(Filters(), after_id=2))

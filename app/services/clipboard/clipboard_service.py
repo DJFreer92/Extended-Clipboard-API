@@ -147,8 +147,20 @@ def add_clip_with_timestamp(content: str, timestamp: str, from_app_name: str | N
 
 
 # Dynamic filter queries
-def _ensure_filters(search: str, time_frame: str) -> Filters:
-    return Filters(search=search, time_frame=time_frame)
+def _ensure_filters(
+    search: str = "",
+    time_frame: str = "",
+    selected_tags: list[str] | None = None,
+    selected_apps: list[str] | None = None,
+    favorites_only: bool = False,
+) -> Filters:
+    return Filters(
+        search=search,
+        time_frame=time_frame,
+        selected_tags=selected_tags or [],
+        favorites_only=favorites_only,
+        selected_apps=selected_apps or [],
+    )
 
 
 def filter_all_clips(
@@ -158,12 +170,12 @@ def filter_all_clips(
     selected_apps: list[str] | None = None,
     favorites_only: bool = False,
 ) -> Clips:
-    filters = Filters(
+    filters = _ensure_filters(
         search=search,
         time_frame=time_frame,
-        selected_tags=selected_tags or [],
-    favorites_only=favorites_only,
-    selected_apps=selected_apps or [],
+        selected_tags=selected_tags,
+        selected_apps=selected_apps,
+        favorites_only=favorites_only,
     )
     rows = execute_dynamic_query(lambda: filter_all_clips_query(filters))
     return Clips(clips=[_row_to_clip(r) for r in rows])
