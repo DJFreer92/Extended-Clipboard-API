@@ -1,5 +1,13 @@
 {
+  "scripts": {
+    "prepare:sqlcipher": "bash scripts/prepare_sqlcipher_amalgamation.sh",
+    "rebuild:sqlcipher": "npx node-gyp rebuild --release --sqlite3=build/sqlcipher -C node_modules/better-sqlite3",
+    "verify:sqlcipher": "node -e \"const Database=require('better-sqlite3'); const db=new Database(':memory:'); try{ db.pragma('key=\\\"test\\\"'); const v=db.pragma('cipher_version',{simple:true}); console.log('cipher_version=', v); } finally { db.close(); }\"",
+    "test:encrypted": "npm run prepare:sqlcipher && npm run rebuild:sqlcipher && npm run verify:sqlcipher && pytest -q"
+  },
   "dependencies": {
+    "better-sqlite3": "^12.2.0",
+    "better-sqlite3-multiple-ciphers": "^12.2.0",
     "uvicorn": "^0.0.1-security"
   }
 }

@@ -133,13 +133,43 @@ Visit the interactive docs:
 - Schema: SQL files under `app/db/schema/**` (tables, indexes, triggers, views)
 - Queries: Reusable SQL under `app/db/queries/**`; executed via helpers in `app/db/db.py`
 
+### Encryption (SQLCipher, always required)
+
+This project always uses an encrypted SQLite database via SQLCipher. All database access is routed through a Node.js runner that requires encryption.
+
+**You must set an encryption key before running any scripts or the API:**
+
+```bash
+export CLIPBOARD_DB_KEY="change-me-strong-passphrase"
+```
+
+#### Node.js encryption driver setup
+
+The Node runner requires an encryption-capable SQLite driver. The recommended and supported approach is to install [`better-sqlite3-multiple-ciphers`](https://github.com/JoshuaWise/better-sqlite3-multiple-ciphers), which includes SQLCipher support out of the box:
+
+```bash
+npm install
+npm install better-sqlite3-multiple-ciphers
+```
+
+No local compilation or custom build steps are needed with this driver. The runner will automatically use it if present.
+
+If you want to use a custom build of `better-sqlite3` linked to SQLCipher, you may, but this is not required and is more complex to maintain.
+
+#### Troubleshooting SQLCipher errors
+
+- If you see errors like `SQLCipher not available. Ensure better-sqlite3 is built against SQLCipher.`, make sure you have installed `better-sqlite3-multiple-ciphers` and that your Node.js environment is using it.
+- The project will not run or test without encryption. There is no plaintext bypass.
+
+#### Test requirements
+
+- Tests require `better-sqlite3-multiple-ciphers` to be installed. If not present, database tests will fail with a SQLCipher error.
+
 ## Development notes
 
 - Keep logic layered: Endpoints → Services → DB helpers/queries → Schema.
 - Add new queries as `.sql` files in `app/db/queries/` and execute via the DB helper in `app/db/db.py`.
 - If you change behavior, add/update tests under `tests/`.
-
-
 
 ## Testing
 
@@ -182,7 +212,8 @@ Notes:
 
 - Tests rely on `tests/conftest.py` to bootstrap imports; run pytest from the repo root so modules import cleanly.
 - Service tests mock DB access (`execute_query`), and endpoint tests mock service calls, so no real database or network is used.
-- Database tests run against a real, isolated SQLite database file created under a temporary directory. They patch the DB path and call `init_db()` so actual schema and triggers are applied. The temporary DB is deleted automatically after tests, and `app/db/clipboard.db` is never touched.
+- Database tests run against a real, isolated encrypted SQLite database file created under a temporary directory. They patch the DB path and call `init_db()` so actual schema and triggers are applied. The temporary DB is deleted automatically after tests, and `app/db/clipboard.db` is never touched.
+- All database tests require encryption and will fail if SQLCipher is not available via the Node.js driver.
 
 ## Troubleshooting
 
