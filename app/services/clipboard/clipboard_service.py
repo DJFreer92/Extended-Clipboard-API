@@ -1,5 +1,6 @@
 from collections.abc import Mapping
 from typing import Sequence, Any
+from datetime import datetime, timezone
 
 from app.models.clipboard.clipboard_models import (
     Clip,
@@ -61,12 +62,16 @@ def _row_to_clip(row: Mapping | Sequence[Any]) -> Clip:
         timestamp = str(row[4]) if len(row) > 4 else str(row[-1])
         is_favorite = bool(row[5]) if len(row) > 5 else False
         tags_list = [t for t in str(tags_csv).split(",") if t] if tags_csv else []
+
+        # Ensure timestamp is in UTC format with Z suffix
+        timestamp_utc = _ensure_utc_format(timestamp)
+
         return Clip(
             id=clip_id,
             content=content,
             from_app_name=from_app,
             tags=tags_list,
-            timestamp=timestamp,
+            timestamp=timestamp_utc,
             is_favorite=is_favorite,
         )
 
@@ -80,14 +85,63 @@ def _row_to_clip(row: Mapping | Sequence[Any]) -> Clip:
     tags_val = row.get(tags_key) if tags_key else None  # type: ignore[index]
     tags_list = [t for t in str(tags_val).split(",") if t] if tags_val else []
     is_fav_val = bool(row.get(fav_key)) if fav_key and fav_key in row else False  # type: ignore[index]
+
+    # Ensure timestamp is in UTC format with Z suffix
+    timestamp_raw = str(row[ts_key])  # type: ignore[index]
+    timestamp_utc = _ensure_utc_format(timestamp_raw)
+
     return Clip(
         id=int(row[id_key]),  # type: ignore[index]
         content=str(row[content_key]),  # type: ignore[index]
         from_app_name=row.get(from_app_key) if from_app_key else None,  # type: ignore[index]
         tags=tags_list,
-        timestamp=str(row[ts_key]),  # type: ignore[index]
+        timestamp=timestamp_utc,
         is_favorite=is_fav_val,
     )
+
+
+def _ensure_utc_format(timestamp: str) -> str:
+    """Convert timestamp to UTC format with Z suffix.
+
+    Handles various input formats and ensures output is always UTC with Z suffix.
+    """
+    if timestamp.endswith('Z'):
+        return timestamp
+
+    # Handle common formats from SQLite
+    if ' ' in timestamp:
+        # SQLite DATETIME format: "YYYY-MM-DD HH:MM:SS"
+        # Treat as UTC and add Z suffix
+        return f"{timestamp.replace(' ', 'T')}Z"
+
+    # Handle ISO format without Z
+    if 'T' in timestamp and not timestamp.endswith('Z'):
+        return f"{timestamp}Z"
+
+    return timestamp
+
+
+def _generate_utc_timestamp() -> str:
+    """Generate current UTC timestamp in ISO format with Z suffix."""
+    return datetime.now(timezone.utc).isoformat(timespec='seconds').replace('+00:00', 'Z')
+
+
+def _parse_timestamp_for_db(timestamp: str | None) -> str:
+    """Parse timestamp for database storage.
+
+    Converts UTC timestamp to SQLite DATETIME format (YYYY-MM-DD HH:MM:SS).
+    """
+    if timestamp is None:
+        return _parse_timestamp_for_db(_generate_utc_timestamp())
+
+    if timestamp.endswith('Z'):
+        # Remove Z and convert T to space for SQLite DATETIME format
+        return timestamp[:-1].replace('T', ' ')
+
+    if 'T' in timestamp:
+        return timestamp.replace('T', ' ')
+
+    return timestamp
 
 def get_recent_clips(n: int | None) -> Clips:
     result = execute_query(GET_N_CLIPS, {"n": n})
@@ -101,6 +155,35 @@ def get_all_clips() -> Clips:
 
 def add_clip(content: str, from_app_name: str | None = None) -> None:
     execute_query(ADD_CLIP, {"content": content, "from_app_name": from_app_name})
+
+
+def add_clip_with_timestamp_support(
+    content: str,
+    timestamp: str | None = None,
+    from_app_name: str | None = None
+) -> None:
+    """Add clip with optional timestamp support.
+
+    If timestamp is provided, uses it (converting to proper format for storage).
+    If not provided, uses current UTC timestamp.
+    """
+    if timestamp:
+        # Use provided timestamp, converting to DB format
+        db_timestamp = _parse_timestamp_for_db(timestamp)
+        execute_query(ADD_CLIP_WITH_TIMESTAMP, {
+            "content": content,
+            "timestamp": db_timestamp,
+            "from_app_name": from_app_name
+        })
+    else:
+        # Generate UTC timestamp and use it
+        utc_timestamp = _generate_utc_timestamp()
+        db_timestamp = _parse_timestamp_for_db(utc_timestamp)
+        execute_query(ADD_CLIP_WITH_TIMESTAMP, {
+            "content": content,
+            "timestamp": db_timestamp,
+            "from_app_name": from_app_name
+        })
 
 def delete_clip(id: int) -> None:
     # Remove favorite if present
@@ -140,9 +223,11 @@ def get_num_clips() -> int:
 
 
 def add_clip_with_timestamp(content: str, timestamp: str, from_app_name: str | None = None) -> None:
+    # Convert timestamp to proper DB format
+    db_timestamp = _parse_timestamp_for_db(timestamp)
     execute_query(
         ADD_CLIP_WITH_TIMESTAMP,
-        {"content": content, "timestamp": timestamp, "from_app_name": from_app_name},
+        {"content": content, "timestamp": db_timestamp, "from_app_name": from_app_name},
     )
 
 

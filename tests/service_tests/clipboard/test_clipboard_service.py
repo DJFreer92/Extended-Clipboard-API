@@ -16,6 +16,15 @@ def fake_rows() -> list[dict[str, Any]]:
     ]
 
 
+@pytest.fixture
+def fake_rows_sqlite_format() -> list[dict[str, Any]]:
+    # Simulate SQLite datetime format without timezone info
+    return [
+    {"ClipID": 1, "Content": "alpha", "FromAppName": "AppA", "Tags": "x,y", "Timestamp": "2025-01-01 00:00:00", "IsFavorite": 1},
+    {"ClipID": 2, "Content": "beta", "FromAppName": None, "Tags": None, "Timestamp": "2025-01-02 12:30:45", "IsFavorite": 0},
+    ]
+
+
 def test_get_recent_clips_maps_rows_to_model(fake_rows: list[dict[str, Any]]):
     with patch("app.services.clipboard.clipboard_service.execute_query", return_value=fake_rows) as exec_mock:
         result = clipboard_service.get_recent_clips(2)
@@ -26,6 +35,17 @@ def test_get_recent_clips_maps_rows_to_model(fake_rows: list[dict[str, Any]]):
         assert result.clips[0].from_app_name == "AppA"
     assert result.clips[0].tags == ["x", "y"]
     assert result.clips[0].is_favorite is True
+
+
+def test_get_recent_clips_converts_sqlite_timestamps_to_utc_format(fake_rows_sqlite_format: list[dict[str, Any]]):
+    """Test that SQLite datetime format gets converted to UTC with Z suffix."""
+    with patch("app.services.clipboard.clipboard_service.execute_query", return_value=fake_rows_sqlite_format) as exec_mock:
+        result = clipboard_service.get_recent_clips(2)
+        exec_mock.assert_called_once()
+        assert len(result.clips) == 2
+        # Timestamps should be converted to UTC format with Z suffix
+        assert result.clips[0].timestamp == "2025-01-01T00:00:00Z"
+        assert result.clips[1].timestamp == "2025-01-02T12:30:45Z"
 
 
 def test_get_all_clips_maps_rows_to_model(fake_rows: list[dict[str, Any]]):
@@ -77,7 +97,80 @@ def test_delete_all_clips_calls_execute_query():
         assert exec_mock.call_count == 4
 
 
+def test_add_clip_with_timestamp_support_uses_provided_timestamp():
+    """Test that add_clip_with_timestamp_support properly handles provided UTC timestamps."""
+    with patch("app.services.clipboard.clipboard_service.execute_query", return_value=[]) as exec_mock:
+        clipboard_service.add_clip_with_timestamp_support(
+            content="test content",
+            timestamp="2025-01-01T15:30:00Z",
+            from_app_name="TestApp"
+        )
+        exec_mock.assert_called_once()
+        args, kwargs = exec_mock.call_args
+        # Should use ADD_CLIP_WITH_TIMESTAMP and convert timestamp to SQLite format
+        query_params = args[1] if len(args) >= 2 else kwargs.get("params")
+        assert query_params["content"] == "test content"
+        assert query_params["timestamp"] == "2025-01-01 15:30:00"  # Converted to SQLite format
+        assert query_params["from_app_name"] == "TestApp"
+
+
+def test_add_clip_with_timestamp_support_generates_utc_when_no_timestamp():
+    """Test that add_clip_with_timestamp_support generates UTC timestamp when none provided."""
+    with patch("app.services.clipboard.clipboard_service.execute_query", return_value=[]) as exec_mock:
+        with patch("app.services.clipboard.clipboard_service._generate_utc_timestamp", return_value="2025-08-15T12:00:00Z") as time_mock:
+            clipboard_service.add_clip_with_timestamp_support(
+                content="test content",
+                timestamp=None,
+                from_app_name="TestApp"
+            )
+            time_mock.assert_called_once()
+            exec_mock.assert_called_once()
+            args, kwargs = exec_mock.call_args
+            query_params = args[1] if len(args) >= 2 else kwargs.get("params")
+            assert query_params["timestamp"] == "2025-08-15 12:00:00"  # Converted to SQLite format
+
+
 # ---- Merged tests from test_new_service.py ----
+
+
+def test_ensure_utc_format_handles_various_inputs():
+    """Test _ensure_utc_format helper function with different timestamp formats."""
+    from app.services.clipboard.clipboard_service import _ensure_utc_format
+
+    # Already UTC format with Z
+    assert _ensure_utc_format("2025-01-01T12:00:00Z") == "2025-01-01T12:00:00Z"
+
+    # SQLite datetime format (space-separated)
+    assert _ensure_utc_format("2025-01-01 12:00:00") == "2025-01-01T12:00:00Z"
+
+    # ISO format without Z
+    assert _ensure_utc_format("2025-01-01T12:00:00") == "2025-01-01T12:00:00Z"
+
+
+def test_parse_timestamp_for_db_converts_utc_to_sqlite_format():
+    """Test _parse_timestamp_for_db helper function."""
+    from app.services.clipboard.clipboard_service import _parse_timestamp_for_db
+
+    # UTC timestamp with Z should become SQLite format
+    assert _parse_timestamp_for_db("2025-01-01T12:00:00Z") == "2025-01-01 12:00:00"
+
+    # ISO without Z should become SQLite format
+    assert _parse_timestamp_for_db("2025-01-01T12:00:00") == "2025-01-01 12:00:00"
+
+    # Already SQLite format should remain unchanged
+    assert _parse_timestamp_for_db("2025-01-01 12:00:00") == "2025-01-01 12:00:00"
+
+
+def test_generate_utc_timestamp_returns_utc_with_z_suffix():
+    """Test _generate_utc_timestamp returns proper UTC format."""
+    from app.services.clipboard.clipboard_service import _generate_utc_timestamp
+
+    timestamp = _generate_utc_timestamp()
+    assert timestamp.endswith("Z")
+    assert "T" in timestamp
+    # Should be in ISO format like "2025-08-15T12:34:56Z"
+    import re
+    assert re.match(r"\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z", timestamp)
 
 
 def test_get_all_clips_after_id_calls_execute_query():

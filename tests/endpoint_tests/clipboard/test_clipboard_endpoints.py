@@ -49,11 +49,11 @@ def test_get_all_clips_endpoint_returns_clips_json():
 
 
 def test_add_clip_endpoint_calls_service():
-    with patch("app.api.clipboard.clipboard_endpoints.clipboard_service.add_clip", return_value=None) as mock_add:
-        body = {"id": 0, "content": "hello", "timestamp": "2025-01-01T00:00:00Z"}
+    with patch("app.api.clipboard.clipboard_endpoints.clipboard_service.add_clip_with_timestamp_support", return_value=None) as mock_add:
+        body = {"content": "hello", "timestamp": "2025-01-01T00:00:00Z"}
         resp = client.post("/clipboard/add_clip", params={"from_app_name": "Src"}, json=body)
         assert resp.status_code == 200
-        mock_add.assert_called_once_with("hello", "Src")
+        mock_add.assert_called_once_with(content="hello", timestamp="2025-01-01T00:00:00Z", from_app_name="Src")
 
 
 def test_delete_clip_endpoint_calls_service():
