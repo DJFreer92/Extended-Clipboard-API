@@ -113,27 +113,48 @@ def test_dynamic_filter_queries(temp_db: None):
 
     # filter all with keyword alpha
     from app.models.clipboard.filters import Filters
-    rows = execute_dynamic_query(lambda: filter_all_clips_query(Filters(search="alpha")))
+
+    def query_wrapper1() -> tuple[str, tuple]:
+        sql, params = filter_all_clips_query(Filters(search="alpha"))
+        return sql, tuple(params)
+
+    rows = execute_dynamic_query(query_wrapper1)
     assert len(rows) == 2
     # New column IsFavorite at index IS_FAVORITE_COL (may be 0/1); ensure row length >= IS_FAVORITE_COL
     IS_FAVORITE_COL = 5  # Index of IsFavorite column in the result set
     assert all(len(r) >= IS_FAVORITE_COL for r in rows)
 
     # filter n with n=1
-    rows = execute_dynamic_query(lambda: filter_n_clips_query(Filters(search="beta"), n=1))
+    def query_wrapper2() -> tuple[str, tuple]:
+        sql, params = filter_n_clips_query(Filters(search="beta"), n=1)
+        return sql, tuple(params)
+
+    rows = execute_dynamic_query(query_wrapper2)
     assert len(rows) == 1
     assert len(rows[0]) >= IS_FAVORITE_COL
 
     # after_id
-    rows = execute_dynamic_query(lambda: filter_all_clips_after_id_query(Filters(), after_id=2))
+    def query_wrapper3() -> tuple[str, tuple]:
+        sql, params = filter_all_clips_after_id_query(Filters(), after_id=2)
+        return sql, tuple(params)
+
+    rows = execute_dynamic_query(query_wrapper3)
     assert len(rows) == 2
 
     # before_id with limit 1
-    rows = execute_dynamic_query(lambda: filter_n_clips_before_id_query(Filters(), before_id=4, n=1))
+    def query_wrapper4() -> tuple[str, tuple]:
+        sql, params = filter_n_clips_before_id_query(Filters(), before_id=4, n=1)
+        return sql, tuple(params)
+
+    rows = execute_dynamic_query(query_wrapper4)
     assert len(rows) == 1
 
     # count filtered
-    rows = execute_dynamic_query(lambda: get_num_filtered_clips_query(Filters(search="beta")))
+    def query_wrapper5() -> tuple[str, tuple]:
+        sql, params = get_num_filtered_clips_query(Filters(search="beta"))
+        return sql, tuple(params)
+
+    rows = execute_dynamic_query(query_wrapper5)
     assert rows[0][0] == 2
 
 

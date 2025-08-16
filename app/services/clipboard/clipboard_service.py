@@ -1,5 +1,5 @@
 from collections.abc import Mapping
-from typing import Sequence, Any
+from typing import Sequence, Any, cast
 from datetime import datetime, timezone
 
 from app.models.clipboard.clipboard_models import (
@@ -75,29 +75,35 @@ def _row_to_clip(row: Mapping | Sequence[Any]) -> Clip:
             is_favorite=is_favorite,
         )
 
-    keys = {str(k).lower(): k for k in row.keys()}
-    id_key = keys.get("clipid") or keys.get("id")
-    content_key = keys.get("content")
-    from_app_key = keys.get("fromappname")
-    tags_key = keys.get("tags")
-    ts_key = keys.get("timestamp")
-    fav_key = keys.get("isfavorite") or keys.get("favorite")
-    tags_val = row.get(tags_key) if tags_key else None  # type: ignore[index]
-    tags_list = [t for t in str(tags_val).split(",") if t] if tags_val else []
-    is_fav_val = bool(row.get(fav_key)) if fav_key and fav_key in row else False  # type: ignore[index]
+    # Handle Mapping type
+    if hasattr(row, 'keys'):
+        mapping_row = cast(Mapping, row)
+        keys = {str(k).lower(): k for k in mapping_row.keys()}
+        id_key = keys.get("clipid") or keys.get("id")
+        content_key = keys.get("content")
+        from_app_key = keys.get("fromappname")
+        tags_key = keys.get("tags")
+        ts_key = keys.get("timestamp")
+        fav_key = keys.get("isfavorite") or keys.get("favorite")
+        tags_val = mapping_row.get(tags_key) if tags_key else None  # type: ignore[index]
+        tags_list = [t for t in str(tags_val).split(",") if t] if tags_val else []
+        is_fav_val = bool(mapping_row.get(fav_key)) if fav_key and fav_key in mapping_row else False  # type: ignore[index]
 
-    # Ensure timestamp is in UTC format with Z suffix
-    timestamp_raw = str(row[ts_key])  # type: ignore[index]
-    timestamp_utc = _ensure_utc_format(timestamp_raw)
+        # Ensure timestamp is in UTC format with Z suffix
+        timestamp_raw = str(mapping_row[ts_key])  # type: ignore[index]
+        timestamp_utc = _ensure_utc_format(timestamp_raw)
 
-    return Clip(
-        id=int(row[id_key]),  # type: ignore[index]
-        content=str(row[content_key]),  # type: ignore[index]
-        from_app_name=row.get(from_app_key) if from_app_key else None,  # type: ignore[index]
-        tags=tags_list,
-        timestamp=timestamp_utc,
-        is_favorite=is_fav_val,
-    )
+        return Clip(
+            id=int(mapping_row[id_key]),  # type: ignore[index]
+            content=str(mapping_row[content_key]),  # type: ignore[index]
+            from_app_name=mapping_row.get(from_app_key) if from_app_key else None,  # type: ignore[index]
+            tags=tags_list,
+            timestamp=timestamp_utc,
+            is_favorite=is_fav_val,
+        )
+
+    # Fallback for unexpected type
+    raise TypeError(f"Unsupported row type: {type(row)}")
 
 
 def _ensure_utc_format(timestamp: str) -> str:
@@ -262,7 +268,12 @@ def filter_all_clips(
         selected_apps=selected_apps,
         favorites_only=favorites_only,
     )
-    rows = execute_dynamic_query(lambda: filter_all_clips_query(filters))
+
+    def query_wrapper() -> tuple[str, tuple]:
+        sql, params = filter_all_clips_query(filters)
+        return sql, tuple(params)
+
+    rows = execute_dynamic_query(query_wrapper)
     return Clips(clips=[_row_to_clip(r) for r in rows])
 
 
@@ -281,7 +292,12 @@ def filter_n_clips(
     favorites_only=favorites_only,
     selected_apps=selected_apps or [],
     )
-    rows = execute_dynamic_query(lambda: filter_n_clips_query(filters, n=n))
+
+    def query_wrapper() -> tuple[str, tuple]:
+        sql, params = filter_n_clips_query(filters, n=n)
+        return sql, tuple(params)
+
+    rows = execute_dynamic_query(query_wrapper)
     return Clips(clips=[_row_to_clip(r) for r in rows])
 
 
@@ -300,7 +316,12 @@ def filter_all_clips_after_id(
     favorites_only=favorites_only,
     selected_apps=selected_apps or [],
     )
-    rows = execute_dynamic_query(lambda: filter_all_clips_after_id_query(filters, after_id=after_id))
+
+    def query_wrapper() -> tuple[str, tuple]:
+        sql, params = filter_all_clips_after_id_query(filters, after_id=after_id)
+        return sql, tuple(params)
+
+    rows = execute_dynamic_query(query_wrapper)
     return Clips(clips=[_row_to_clip(r) for r in rows])
 
 
@@ -320,11 +341,12 @@ def filter_n_clips_before_id(
     favorites_only=favorites_only,
     selected_apps=selected_apps or [],
     )
-    rows = execute_dynamic_query(
-        lambda: filter_n_clips_before_id_query(
-            filters, n=n, before_id=before_id
-        )
-    )
+
+    def query_wrapper() -> tuple[str, tuple]:
+        sql, params = filter_n_clips_before_id_query(filters, n=n, before_id=before_id)
+        return sql, tuple(params)
+
+    rows = execute_dynamic_query(query_wrapper)
     return Clips(clips=[_row_to_clip(r) for r in rows])
 
 
@@ -342,7 +364,12 @@ def get_num_filtered_clips(
     favorites_only=favorites_only,
     selected_apps=selected_apps or [],
     )
-    rows = execute_dynamic_query(lambda: get_num_filtered_clips_query(filters))
+
+    def query_wrapper() -> tuple[str, tuple]:
+        sql, params = get_num_filtered_clips_query(filters)
+        return sql, tuple(params)
+
+    rows = execute_dynamic_query(query_wrapper)
     return int(rows[0][0]) if rows else 0
 
 
