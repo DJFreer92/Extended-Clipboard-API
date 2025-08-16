@@ -89,7 +89,9 @@ def seed(n: int = 100) -> None:
         execute_query(ADD_WITH_TS, {"content": content, "timestamp": ts, "from_app_name": from_app})
         # Fetch the most recent clip id via file-based query (connection-safe)
         last_id_row = execute_query(GET_LAST_CLIP_ID)
-        clip_id = int(last_id_row[0][0]) if last_id_row else 0
+        if not last_id_row:
+            raise RuntimeError("No clip ID returned after insert; database may be misconfigured.")
+        clip_id = int(last_id_row[0][0])
         _maybe_add_tags_and_favorite(clip_id, tag_pool)
 
     # Report final count
