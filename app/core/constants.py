@@ -24,6 +24,7 @@ GET_ALL_CLIPS_AFTER_ID: Path = QUERIES_DIR / "get_all_clips_after_id.sql"
 GET_N_CLIPS_BEFORE_ID: Path = QUERIES_DIR / "get_n_clips_before_id.sql"
 GET_NUM_CLIPS: Path = QUERIES_DIR / "get_num_clips.sql"
 GET_ALL_FROM_APPS: Path = QUERIES_DIR / "get_all_from_apps.sql"
+GET_LAST_CLIP_ID: Path = QUERIES_DIR / "get_last_clip_id.sql"
 
 # Tags & Favorites
 ADD_CLIP_TAG: Path = QUERIES_DIR / "add_clip_tag.sql"
