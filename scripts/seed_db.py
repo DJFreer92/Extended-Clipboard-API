@@ -29,6 +29,7 @@ from app.core.constants import (
     ADD_TAG_IF_NOT_EXISTS,
     ADD_CLIP_TAG,
     ADD_FAVORITE,
+    GET_LAST_CLIP_ID,
 )
 
 ADD_WITH_TS = QUERIES_DIR / "add_clip_with_timestamp.sql"
@@ -73,7 +74,7 @@ def seed(n: int = 100) -> None:
     app_names = ["Safari", "Chrome", "VSCode", "Terminal", "Notes", "Mail", None]
     tag_pool = ["work", "personal", "todo", "idea", "code", "quote", "ref"]
 
-    # Insert n clips (collect assigned IDs after each insert using last_insert_rowid)
+    # Insert n clips (collect assigned IDs after each insert using MAX(ID))
     # Fetch current max ID beforehand for display purposes
     starting_rows = execute_query("get_all_clips.sql")
     start_count = len(starting_rows)
@@ -86,14 +87,14 @@ def seed(n: int = 100) -> None:
         )
         from_app = random.choice(app_names)
         execute_query(ADD_WITH_TS, {"content": content, "timestamp": ts, "from_app_name": from_app})
-        # Get last inserted row ID using SQLite's last_insert_rowid()
-        last_id_row = execute_query("SELECT last_insert_rowid();")
-        clip_id = last_id_row[0][0]
+        # Fetch the most recent clip id via file-based query (connection-safe)
+        last_id_row = execute_query(GET_LAST_CLIP_ID)
+        clip_id = int(last_id_row[0][0]) if last_id_row else 0
         _maybe_add_tags_and_favorite(clip_id, tag_pool)
 
     # Report final count
     rows = execute_query("get_all_clips.sql")
-    print(f"Seed complete. Inserted ~{n} clips. Current row count: {len(rows)}. DB at {DB_PATH}")
+    print(f"Seed complete. Inserted {n} clips. Current row count: {len(rows)}. DB at {DB_PATH}")
 
 
 if __name__ == "__main__":

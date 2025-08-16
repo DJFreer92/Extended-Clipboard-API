@@ -1,3 +1,1 @@
-DELETE FROM ClipTags;
-
 DELETE FROM Tags;

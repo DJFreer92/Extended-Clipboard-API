@@ -1,83 +1,112 @@
-# Extended-Clipboard-API
+# Extended Clipboard API
 
-## Overview
+A small FastAPI service for persisting clipboard entries in an encrypted SQLite (SQLCipher) database and retrieving them with flexible filters.
 
-Small FastAPI service and utilities for persisting clipboard entries to a local SQLite database and fetching recent clips. The project favors a simple, layered design: endpoints (HTTP) → services (business logic) → DB helpers/queries (data access) → schema (DDL).
+Desktop app (UI) that uses this API:
 
-## Features
+- Extended Clipboard Desktop App: <https://github.com/DJFreer92/Extended-Clipboard-Desktop-App>
 
-- Persist new clipboard entries to `clipboard.db`
-- Fetch the N most recent clipboard entries
-- FastAPI app with clean separation of concerns
-- Database schema and queries are stored as SQL files in the repo
+## Why this project
+
+- Local-first clipboard history with tagging, favorites, and source app tracking
+- Clean layers: Endpoints (HTTP) → Services (logic) → Queries (SQL files) → Schema (DDL)
+- Encrypted by default via SQLCipher, accessed through a Node.js runner
 
 ## Tech stack
 
-- Python 3.13
-- FastAPI, Uvicorn, Pydantic
-- SQLite (via Python stdlib)
+- Python 3.13, FastAPI, Uvicorn, Pydantic
+- SQLite + SQLCipher (via a Node runner using better-sqlite3-multiple-ciphers)
+- Tests with pytest
 
 ## Repository structure
 
 ```text
-LICENSE                         # Project license
-README.md                       # This file
-requirements.txt                # Python dependencies
+LICENSE
+README.md
+requirements.txt
+package.json
 app/
   api/
     __init__.py
-    main.py                     # FastAPI app entry (includes routers)
-    endpoints/                  # HTTP route modules (grouped by feature)
+    main.py                      # FastAPI app entry (includes routers)
+    clipboard/
+      clipboard_endpoints.py     # All /clipboard endpoints
   core/
-    constants.py                # Paths and constants
+    constants.py                 # Paths and query file constants
   db/
     __init__.py
-    db.py                       # DB helpers (init_db, execute_query)
-    queries/                    # Reusable SQL query files
-    schema/                     # DDL: tables, indexes, triggers, views
+    db.py                        # Node-backed DB helpers (init_db, execute_query)
+    queries/                     # Reusable SQL files (1 statement per file)
+    schema/                      # DDL organized by type
       tables/
-      triggers/
       indexes/
+      triggers/
       views/
-  models/                       # Pydantic models (request/response)
-  services/                     # Business logic modules (grouped by feature)
+  models/
+    clipboard/                   # Pydantic models & filters
+  services/
+    clipboard/                   # Business logic
 scripts/
-  create_db.py                  # Initializes DB schema (runs init_db)
-  run_api.py                    # Helper script to run the API
-  run_poller.py                 # Optional: example poller/ingestion script
+  create_db.py                   # Initialize schema (via Node runner)
+  seed_db.py                     # Seed sample data (timestamps, tags, favorites)
+  run_api.py                     # Start FastAPI server
+  run_poller.py                  # Example ingestion/poller script
 tests/
-  endpoint_tests/               # Tests for HTTP endpoints/routers
-  service_tests/                # Tests for service/business logic
-  db_tests/                     # Tests for queries, triggers, and DB helpers
+  endpoint_tests/
+  service_tests/
+  db_tests/
 .github/
-  copilot-instructions.md       # Copilot repository instructions
-  instructions/                 # Language-specific Copilot instruction files
+  copilot-instructions.md
+  instructions/
 ```
 
-## Getting started
+## Prerequisites
 
-Prerequisites:
-
-- Python 3.13 installed
-
-Setup:
+- Python 3.13
+- Node.js (LTS) + npm
+- An encryption key exported as an environment variable (required):
 
 ```bash
-# From repo root
+export CLIPBOARD_DB_KEY="change-me-strong-passphrase"
+```
+
+Install Python deps:
+
+```bash
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Initialize the database schema:
+Install Node deps and the SQLCipher-capable driver:
+
+```bash
+npm install
+npm install better-sqlite3-multiple-ciphers
+```
+
+## Initialize or seed the database
+
+- Initialize schema only:
 
 ```bash
 python scripts/create_db.py
 ```
 
+- Seed with sample data (100 clips over ~2 years, random tags/favorites):
+
+```bash
+python scripts/seed_db.py
+```
+
+Notes:
+
+- The database lives at `app/db/clipboard.db`.
+- All SQL is executed through `scripts/db_runner.mjs`; each query file must contain a single statement.
+
 ## Run the API
 
-You can run the server via Uvicorn or the helper script.
+Start the server (two options):
 
 ```bash
 # Option A: Uvicorn directly
@@ -87,139 +116,77 @@ uvicorn app.api.main:app --reload
 python scripts/run_api.py
 ```
 
-Visit the interactive docs:
+## Endpoints overview
 
-- Swagger UI: <http://127.0.0.1:8000/docs>
-- ReDoc: <http://127.0.0.1:8000/redoc>
+Base path: `/clipboard`
 
-## API endpoints
+Clips:
 
-- GET `/clipboard/get_recent_clips?n=10`
-  - Query params: `n` (int, default 10, min 1)
-  - Response body (example):
+- GET `/get_recent_clips?n=10` → { "clips": Clip[] }
+- GET `/get_all_clips` → { "clips": Clip[] }
+- GET `/get_all_clips_after_id?before_id=<int>` → { "clips": Clip[] }
+- GET `/get_n_clips_before_id?n=<int>&before_id=<int>` → { "clips": Clip[] }
+- GET `/get_num_clips` → number
+- POST `/add_clip` (body: { content: string }, optional query: from_app_name)
+- POST `/delete_clip?id=<int>`
+- POST `/delete_all_clips`
 
-    ```json
-    {
-      "clips": [ { "content": "..." } ]
-    }
-    ```
+Filtering (all return { "clips": Clip[] }):
 
-  - Example:
+- GET `/filter_all_clips`
+- GET `/filter_n_clips`
+- GET `/filter_all_clips_after_id`
+- GET `/filter_n_clips_before_id`
+- GET `/get_num_filtered_clips` → number
 
-    ```bash
-    curl "http://127.0.0.1:8000/clipboard/get_recent_clips?n=5"
-    ```
+Common query params for filters:
 
-- POST `/clipboard/add_clip`
-  - Adds a new clipboard entry.
-  - Request body (application/json):
+- `search`: string (keywords split by space, comma, semicolon, pipe, tab, newline)
+- `time_frame`: one of `past_24_hours | past_week | past_month | past_3_months | past_year` (empty = all time)
+- `selected_tags`: repeated query param or array syntax
+- `selected_apps`: repeated query param or array syntax
+- `favorites_only`: boolean
 
-    ```json
-    { "content": "Hello World" }
-    ```
+Tags:
 
-  - Example:
+- POST `/add_clip_tag?clip_id=<int>&tag_name=<string>`
+- POST `/remove_clip_tag?clip_id=<int>&tag_id=<int>`
+- GET `/get_all_tags` → { "tags": { id, name }[] }
+- GET `/get_num_clips_per_tag?tag_id=<int>` → number
 
-    ```bash
-    curl -X POST \
-      -H "Content-Type: application/json" \
-      -d '{"content":"Hello World"}' \
-      "http://127.0.0.1:8000/clipboard/add_clip"
-    ```
+Favorites:
 
-## Database
+- POST `/add_favorite?clip_id=<int>`
+- POST `/remove_favorite?clip_id=<int>`
+- GET `/get_all_favorites` → { "clip_ids": number[] }
+- GET `/get_num_favorites` → number
 
-- File: `app/db/clipboard.db` (created on first init)
-- Schema: SQL files under `app/db/schema/**` (tables, indexes, triggers, views)
-- Queries: Reusable SQL under `app/db/queries/**`; executed via helpers in `app/db/db.py`
+Apps:
 
-### Encryption (SQLCipher, always required)
+- GET `/get_all_from_apps` → string[] (distinct non-null `FromAppName` values)
 
-This project always uses an encrypted SQLite database via SQLCipher. All database access is routed through a Node.js runner that requires encryption.
+Clip model shape (response):
 
-**You must set an encryption key before running any scripts or the API:**
-
-```bash
-export CLIPBOARD_DB_KEY="change-me-strong-passphrase"
-```
-
-#### Node.js encryption driver setup
-
-The Node runner requires an encryption-capable SQLite driver. The recommended and supported approach is to install [`better-sqlite3-multiple-ciphers`](https://github.com/JoshuaWise/better-sqlite3-multiple-ciphers), which includes SQLCipher support out of the box:
-
-```bash
-npm install
-npm install better-sqlite3-multiple-ciphers
-```
-
-No local compilation or custom build steps are needed with this driver. The runner will automatically use it if present.
-
-If you want to use a custom build of `better-sqlite3` linked to SQLCipher, you may, but this is not required and is more complex to maintain.
-
-#### Troubleshooting SQLCipher errors
-
-- If you see errors like `SQLCipher not available. Ensure better-sqlite3 is built against SQLCipher.`, make sure you have installed `better-sqlite3-multiple-ciphers` and that your Node.js environment is using it.
-- The project will not run or test without encryption. There is no plaintext bypass.
-
-#### Test requirements
-
-- Tests require `better-sqlite3-multiple-ciphers` to be installed. If not present, database tests will fail with a SQLCipher error.
-
-## Development notes
-
-- Keep logic layered: Endpoints → Services → DB helpers/queries → Schema.
-- Add new queries as `.sql` files in `app/db/queries/` and execute via the DB helper in `app/db/db.py`.
-- If you change behavior, add/update tests under `tests/`.
+- `{ id: number, content: string, from_app_name: string | null, tags: string[], timestamp: string, is_favorite: boolean }`
 
 ## Testing
 
-Unit tests are written with pytest and cover endpoints, services, and the database (queries + triggers).
-
-Prerequisites:
-
-- Activate the virtual environment and install dependencies.
-- Install pytest (dev dependency):
-
 ```bash
 pip install pytest
-```
-
-Run all tests from the repository root:
-
-```bash
 pytest -q
 ```
 
-Run only service tests:
+Tips:
 
-```bash
-pytest tests/service_tests -q
-```
-
-Run only endpoint tests:
-
-```bash
-pytest tests/endpoint_tests -q
-```
-
-Run only database (queries + triggers) tests:
-
-```bash
-pytest tests/db_tests -q
-```
-
-Notes:
-
-- Tests rely on `tests/conftest.py` to bootstrap imports; run pytest from the repo root so modules import cleanly.
-- Service tests mock DB access (`execute_query`), and endpoint tests mock service calls, so no real database or network is used.
-- Database tests run against a real, isolated encrypted SQLite database file created under a temporary directory. They patch the DB path and call `init_db()` so actual schema and triggers are applied. The temporary DB is deleted automatically after tests, and `app/db/clipboard.db` is never touched.
-- All database tests require encryption and will fail if SQLCipher is not available via the Node.js driver.
+- Run tests from the repo root so imports resolve.
+- DB tests require `better-sqlite3-multiple-ciphers` and `CLIPBOARD_DB_KEY` to be set.
 
 ## Troubleshooting
 
-- “Database already exists. Skipping init.” means the schema init was previously run; delete `app/db/clipboard.db` if you want a fresh database.
-- If imports fail when running scripts, ensure you’re executing from the repo root with the virtual environment activated.
+- Error: `Missing database key. Set the CLIPBOARD_DB_KEY ...` → Export `CLIPBOARD_DB_KEY` before running.
+- Error: `SQLCipher not available...` → Ensure `better-sqlite3-multiple-ciphers` is installed (and Node is available).
+- Query errors like "more than one statement" → Ensure each `.sql` file in `app/db/queries/` contains exactly one statement.
 
 ## License
 
-This project is licensed under the terms of the LICENSE file included in this repository.
+See [LICENSE](./LICENSE).
