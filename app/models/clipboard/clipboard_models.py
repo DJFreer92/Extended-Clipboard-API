@@ -11,6 +11,15 @@ class Clip(BaseModel):
     is_favorite: bool = False
 
 
+class ClipInput(BaseModel):
+    """Input model for adding clips - timestamp is optional."""
+    content: str
+    from_app_name: Optional[str] = None
+    tags: List[str] = []
+    timestamp: Optional[str] = None
+    is_favorite: bool = False
+
+
 class Clips(BaseModel):
     clips: list[Clip]
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Query
 from app.services.clipboard import clipboard_service
-from app.models.clipboard.clipboard_models import Clips, Clip
+from app.models.clipboard.clipboard_models import Clips, Clip, ClipInput
 
 router = APIRouter(prefix="/clipboard", tags=["Clipboard"])
 
@@ -13,8 +13,13 @@ def get_all_clips() -> Clips:
     return clipboard_service.get_all_clips()
 
 @router.post("/add_clip")
-def add_clip(clip: Clip, from_app_name: str | None = None) -> None:
-    clipboard_service.add_clip(clip.content, from_app_name)
+def add_clip(clip: ClipInput, from_app_name: str | None = None) -> None:
+    # Use timestamp from clip if provided, otherwise service will generate UTC timestamp
+    clipboard_service.add_clip_with_timestamp_support(
+        content=clip.content,
+        timestamp=clip.timestamp,
+        from_app_name=from_app_name or clip.from_app_name
+    )
 
 @router.post("/delete_clip")
 def delete_clip(id: int) -> None:
