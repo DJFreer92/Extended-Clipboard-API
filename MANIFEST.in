@@ -1,0 +1,16 @@
+include README.md
+include LICENSE
+include requirements.txt
+include package.json
+recursive-include app/db/queries *.sql
+recursive-include app/db/schema *.sql
+recursive-include scripts *.py
+recursive-include scripts *.mjs
+recursive-include scripts *.sh
+exclude *.pyc
+exclude */__pycache__/*
+exclude .git/*
+exclude .venv/*
+exclude extended_clipboard_api.egg-info/*
+exclude tests/*
+exclude __pycache__/*
